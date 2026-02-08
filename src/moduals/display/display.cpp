@@ -226,4 +226,3 @@ void display_connecting(const char* deviceName) {
     display.println(deviceName);
     display.display();
 }
-
