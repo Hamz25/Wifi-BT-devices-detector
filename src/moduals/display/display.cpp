@@ -101,7 +101,7 @@ void display_radar() {
     }
     
     // Display device count at top
-    display.setTextSize(1);
+    display.setTextSize(0.5);
     display.setCursor(0, 0);
     display.printf("Devices: %d", devices.size());
     
@@ -118,7 +118,7 @@ void display_list(int selectedIndex) {
     std::vector<TrackedDevice> devices = tracking_getAllDevices();
     
     // Title
-    display.setTextSize(1);
+    display.setTextSize(0.5);
     display.setCursor(0, 0);
     display.println("Device List");
     display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
@@ -166,7 +166,7 @@ void display_detail(int deviceIndex) {
     
     const TrackedDevice& dev = devices[deviceIndex];
     
-    display.setTextSize(1);
+    display.setTextSize(0.5);
     display.setTextColor(SSD1306_WHITE);
     
     // Device type
@@ -209,7 +209,7 @@ void display_detail(int deviceIndex) {
 
 void display_message(const char* message) {
     display.clearDisplay();
-    display.setTextSize(1);
+    display.setTextSize(0.5);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 28);
     display.println(message);
@@ -218,7 +218,7 @@ void display_message(const char* message) {
 
 void display_connecting(const char* deviceName) {
     display.clearDisplay();
-    display.setTextSize(1);
+    display.setTextSize(0.5);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 20);
     display.println("Connecting to:");
