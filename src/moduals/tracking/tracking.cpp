@@ -6,7 +6,7 @@ static std::vector<TrackedDevice> trackedDevices;
 static unsigned long lastUpdateTime = 0;
 
 // Timeout for removing inactive devices (milliseconds)
-const unsigned long DEVICE_TIMEOUT = 60000; // 1 minute
+const unsigned long DEVICE_TIMEOUT = 10000; // 10 Seconds
 
 void tracking_init() {
     trackedDevices.clear();
