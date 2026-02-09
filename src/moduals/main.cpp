@@ -147,7 +147,7 @@ void loop() {
         // Print summary
         Serial.printf("\nTotal tracked devices: %d\n", tracking_getDeviceCount());
         Serial.println("--- Scan Complete ---\n");
-        
+
         // LED: Ready
         LED_RGB.setPixelColor(0, LED_RGB.Color(0, 255, 0)); // Green = Ready
         LED_RGB.show();
