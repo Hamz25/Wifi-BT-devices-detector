@@ -5,12 +5,18 @@
 
 using namespace std;
 
+// External packet counter (increment from main)
+extern void incrementPacketCount();
+
 // Packet sniffing callback
 static void wifi_sniffer_callback(void* buf, wifi_promiscuous_pkt_type_t type) {
     if (type != WIFI_PKT_MGMT) return;
     
     wifi_promiscuous_pkt_t* pkt = (wifi_promiscuous_pkt_t*)buf;
     wifi_pkt_rx_ctrl_t ctrl = pkt->rx_ctrl;
+    
+    // Increment global packet counter
+    incrementPacketCount();
     
     // Get packet data
     const uint8_t* payload = pkt->payload;
@@ -75,7 +81,11 @@ std::vector<Device> wifi_scan() {
         d.mac = WiFi.BSSIDstr(i);
         d.name = WiFi.SSID(i);
         d.rssi = WiFi.RSSI(i);
-        d.distance = estimateDistance(d.rssi);
+        
+        // Improved distance estimation for WiFi
+        // Use different TX power and path loss model for better accuracy
+        d.distance = estimateDistanceWiFi_Enhanced(d.rssi);
+        
         d.type = TYPE_WIFI_AP;
         d.channel = WiFi.channel(i);
         d.encryption = WiFi.encryptionType(i);

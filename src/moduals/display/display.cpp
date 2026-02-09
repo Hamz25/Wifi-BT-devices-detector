@@ -16,6 +16,12 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 #define MAX_DISPLAY_DISTANCE 20.0f  // meters
 #define SCK_PIN 12
 #define SDA_PIN 11
+
+// Display constants for 0.96" screen
+#define MAX_VISIBLE_LINES 5
+#define LINE_HEIGHT 11
+#define MENU_START_Y 12
+
 // Animation
 static int radarAngle = 0;
 
@@ -42,6 +48,48 @@ void display_init() {
     display.display(); 
 }
 
+// ============ MAIN MENU DISPLAY ============
+void display_menu(const char** items, int itemCount, int selectedIndex, int scrollOffset) {
+    display.clearDisplay();
+    
+    // Title bar
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println("=== MAIN MENU ===");
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    // Display menu items (up to 5 visible)
+    for (int i = 0; i < MAX_VISIBLE_LINES && (scrollOffset + i) < itemCount; i++) {
+        int idx = scrollOffset + i;
+        int y = MENU_START_Y + i * LINE_HEIGHT;
+        
+        // Highlight selected item
+        if (idx == selectedIndex) {
+            display.fillRect(0, y, 128, LINE_HEIGHT, SSD1306_WHITE);
+            display.setTextColor(SSD1306_BLACK);
+        } else {
+            display.setTextColor(SSD1306_WHITE);
+        }
+        
+        display.setCursor(4, y + 2);
+        display.print(items[idx]);
+    }
+    
+    // Scroll indicators
+    if (scrollOffset > 0) {
+        // Up arrow
+        display.fillTriangle(124, MENU_START_Y, 120, MENU_START_Y + 3, 128, MENU_START_Y + 3, SSD1306_WHITE);
+    }
+    if (scrollOffset + MAX_VISIBLE_LINES < itemCount) {
+        // Down arrow
+        display.fillTriangle(120, 60, 128, 60, 124, 57, SSD1306_WHITE);
+    }
+    
+    display.display();
+}
+
+// ============ RADAR DISPLAY ============
 void display_radar() {
     display.clearDisplay();
     
@@ -69,14 +117,10 @@ void display_radar() {
     // Plot devices on radar
     for (const auto& dev : devices) {
         // Calculate position based on distance
-        // Both are now doubles
-
-        // Use (std::min) with parentheses to prevent macro expansion
         float normalizedDist = (std::min)((float)(dev.distance / MAX_DISPLAY_DISTANCE), 1.0f);
         int plotRadius = normalizedDist * RADAR_MAX_RADIUS;
         
         // Use lastSeen time to create a pseudo-angle distribution
-        // This spreads devices around the circle instead of overlapping
         float deviceAngle = (dev.lastSeen % 360) * PI / 180.0;
         
         int x = RADAR_CENTER_X + plotRadius * cos(deviceAngle);
@@ -101,9 +145,9 @@ void display_radar() {
     }
     
     // Display device count at top
-    display.setTextSize(0.5);
+    display.setTextSize(1);
     display.setCursor(0, 0);
-    display.printf("Devices: %d", devices.size());
+    display.printf("Dev:%d", devices.size());
     
     // Display legend at bottom
     display.setCursor(0, 56);
@@ -112,22 +156,32 @@ void display_radar() {
     display.display();
 }
 
+// ============ DEVICE LIST DISPLAY ============
 void display_list(int selectedIndex) {
     display.clearDisplay();
     
     std::vector<TrackedDevice> devices = tracking_getAllDevices();
     
     // Title
-    display.setTextSize(0.5);
+    display.setTextSize(1);
     display.setCursor(0, 0);
-    display.println("Device List");
+    display.printf("Devices (%d)", devices.size());
     display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
     
+    if (devices.size() == 0) {
+        display.setCursor(20, 28);
+        display.print("No devices");
+        display.display();
+        return;
+    }
+    
+    // Calculate scroll offset
+    int scrollOffset = std::max(0, selectedIndex - 2);
+    
     // Display up to 5 devices
-    int startIdx = std::max(0, selectedIndex - 2);
-    for (int i = 0; i < 5 && (startIdx + i) < devices.size(); i++) {
-        int idx = startIdx + i;
-        int y = 12 + i * 10;
+    for (int i = 0; i < MAX_VISIBLE_LINES && (scrollOffset + i) < devices.size(); i++) {
+        int idx = scrollOffset + i;
+        int y = MENU_START_Y + i * 10;
         
         // Highlight selected
         if (idx == selectedIndex) {
@@ -141,7 +195,7 @@ void display_list(int selectedIndex) {
         
         const TrackedDevice& dev = devices[idx];
         String displayName = dev.name.isEmpty() ? 
-            dev.mac.substring(0, 10) : dev.name.substring(0, 10);
+            dev.mac.substring(0, 8) : dev.name.substring(0, 8);
         
         char typeChar = dev.type == TYPE_WIFI_AP ? 'W' : 
                         dev.type == TYPE_BLUETOOTH ? 'B' : 'C';
@@ -149,10 +203,19 @@ void display_list(int selectedIndex) {
         display.printf("%c %s %.1fm", typeChar, displayName.c_str(), dev.distance);
     }
     
+    // Scroll indicators
+    if (scrollOffset > 0) {
+        display.fillTriangle(124, MENU_START_Y, 120, MENU_START_Y + 3, 128, MENU_START_Y + 3, SSD1306_WHITE);
+    }
+    if (scrollOffset + MAX_VISIBLE_LINES < devices.size()) {
+        display.fillTriangle(120, 60, 128, 60, 124, 57, SSD1306_WHITE);
+    }
+    
     display.display();
 }
 
-void display_detail(int deviceIndex) {
+// ============ DEVICE DETAIL DISPLAY ============
+void display_detail(int deviceIndex, bool useMetric) {
     display.clearDisplay();
     
     std::vector<TrackedDevice> devices = tracking_getAllDevices();
@@ -166,50 +229,251 @@ void display_detail(int deviceIndex) {
     
     const TrackedDevice& dev = devices[deviceIndex];
     
-    display.setTextSize(0.5);
+    display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     
-    // Device type
+    // Device type (shortened for small screen)
     display.setCursor(0, 0);
     if (dev.type == TYPE_WIFI_AP) {
-        display.println("WiFi Access Point");
+        display.println("WiFi AP");
     } else if (dev.type == TYPE_BLUETOOTH) {
-        display.println("Bluetooth Device");
+        display.println("Bluetooth");
     } else {
         display.println("WiFi Client");
     }
     
     display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
     
-    // Name/SSID
-    display.setCursor(0, 14);
-    display.print("Name: ");
+    // Name/SSID (scrollable if too long)
+    display.setCursor(0, 12);
+    display.print("N:");
     if (dev.name.isEmpty()) {
         display.println("Unknown");
     } else {
-        display.println(dev.name.substring(0, 12));
+        // Truncate to fit screen
+        String truncName = dev.name.length() > 19 ? dev.name.substring(0, 19) : dev.name;
+        display.println(truncName);
     }
     
-    // MAC Address
-    display.setCursor(0, 24);
-    display.print("MAC:");
-    display.setCursor(0, 32);
-    display.println(dev.mac.substring(0, 17));
+    // MAC Address (two lines for readability)
+    display.setCursor(0, 21);
+    display.print("M:");
+    display.setCursor(0, 30);
+    display.println(dev.mac);
     
     // Signal Strength
-    display.setCursor(0, 42);
-    display.printf("RSSI: %d dBm", dev.rssi);
+    display.setCursor(0, 39);
+    display.printf("RSSI:%ddBm", dev.rssi);
     
-    // Distance
-    display.setCursor(0, 52);
-    display.printf("Dist: %.2f m", dev.distance);
+    // Distance (with unit conversion)
+    display.setCursor(0, 48);
+    if (useMetric) {
+        display.printf("Dist:%.2fm", dev.distance);
+    } else {
+        float distFeet = dev.distance * 3.28084;
+        display.printf("Dist:%.2fft", distFeet);
+    }
+    
+    // Additional info
+    display.setCursor(0, 57);
+    display.printf("Seen:%d", dev.seenCount);
     
     display.display();
 }
 
+// ============ PACKET SNIFFING DISPLAY ============
+void display_packet_sniff(int channel, unsigned long totalPackets, int packetsPerSec) {
+    display.clearDisplay();
+    
+    // Title
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.println("PACKET SNIFFER");
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    // Current channel
+    display.setCursor(0, 14);
+    display.printf("Channel: %d", channel);
+    
+    // Packet count
+    display.setCursor(0, 26);
+    display.printf("Total: %lu", totalPackets);
+    
+    // Packets per second
+    display.setCursor(0, 38);
+    display.printf("Rate: %d p/s", packetsPerSec);
+    
+    // Visual activity bar
+    int barWidth = (packetsPerSec > 100) ? 100 : packetsPerSec;
+    display.drawRect(0, 50, 128, 10, SSD1306_WHITE);
+    if (barWidth > 0) {
+        display.fillRect(2, 52, (barWidth * 124) / 100, 6, SSD1306_WHITE);
+    }
+    
+    // Instructions
+    display.setTextSize(1);
+    display.setCursor(0, 62);
+    display.print("UP/DN:CH");
+    
+    display.display();
+}
+
+// ============ WIFI SCAN DISPLAY ============
+void display_wifi_scan() {
+    display.clearDisplay();
+    
+    std::vector<TrackedDevice> devices = tracking_getDevicesByType(TYPE_WIFI_AP);
+    
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.printf("WiFi APs (%d)", devices.size());
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    if (devices.size() == 0) {
+        display.setCursor(10, 28);
+        display.print("Scanning...");
+        display.display();
+        return;
+    }
+    
+    // Show top 5 closest WiFi APs
+    std::sort(devices.begin(), devices.end(),
+        [](const TrackedDevice& a, const TrackedDevice& b) {
+            return a.distance < b.distance;
+        });
+    
+    for (int i = 0; i < MAX_VISIBLE_LINES && i < devices.size(); i++) {
+        int y = MENU_START_Y + i * 10;
+        display.setCursor(2, y);
+        
+        String ssid = devices[i].name.isEmpty() ? "Hidden" : devices[i].name.substring(0, 10);
+        display.printf("%s %ddBm", ssid.c_str(), devices[i].rssi);
+    }
+    
+    display.display();
+}
+
+// ============ BLUETOOTH SCAN DISPLAY ============
+void display_bt_scan() {
+    display.clearDisplay();
+    
+    std::vector<TrackedDevice> devices = tracking_getDevicesByType(TYPE_BLUETOOTH);
+    
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.printf("BLE Dev (%d)", devices.size());
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    if (devices.size() == 0) {
+        display.setCursor(10, 28);
+        display.print("Scanning...");
+        display.display();
+        return;
+    }
+    
+    // Show top 5 closest BLE devices
+    std::sort(devices.begin(), devices.end(),
+        [](const TrackedDevice& a, const TrackedDevice& b) {
+            return a.distance < b.distance;
+        });
+    
+    for (int i = 0; i < MAX_VISIBLE_LINES && i < devices.size(); i++) {
+        int y = MENU_START_Y + i * 10;
+        display.setCursor(2, y);
+        
+        String name = devices[i].name.substring(0, 10);
+        display.printf("%s %ddBm", name.c_str(), devices[i].rssi);
+    }
+    
+    display.display();
+}
+
+// ============ STATISTICS DISPLAY ============
+void display_stats() {
+    display.clearDisplay();
+    
+    std::vector<TrackedDevice> all = tracking_getAllDevices();
+    int wifiCount = 0, bleCount = 0, clientCount = 0;
+    
+    for (const auto& dev : all) {
+        if (dev.type == TYPE_WIFI_AP) wifiCount++;
+        else if (dev.type == TYPE_BLUETOOTH) bleCount++;
+        else clientCount++;
+    }
+    
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.println("STATISTICS");
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    display.setCursor(0, 14);
+    display.printf("Total: %d", all.size());
+    
+    display.setCursor(0, 26);
+    display.printf("WiFi APs: %d", wifiCount);
+    
+    display.setCursor(0, 38);
+    display.printf("BLE: %d", bleCount);
+    
+    display.setCursor(0, 50);
+    display.printf("Clients: %d", clientCount);
+    
+    display.display();
+}
+
+// ============ SETTINGS DISPLAY ============
+void display_settings(const char** items, int itemCount, int selectedIndex, int scrollOffset,
+                     unsigned long scanInterval, bool useMetric, bool autoScan, bool promiscuous) {
+    display.clearDisplay();
+    
+    // Title
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.println("SETTINGS");
+    display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+    
+    // Display settings (up to 5 visible)
+    for (int i = 0; i < MAX_VISIBLE_LINES && (scrollOffset + i) < itemCount; i++) {
+        int idx = scrollOffset + i;
+        int y = MENU_START_Y + i * 10;
+        
+        // Highlight selected
+        if (idx == selectedIndex) {
+            display.fillRect(0, y, 128, 10, SSD1306_WHITE);
+            display.setTextColor(SSD1306_BLACK);
+        } else {
+            display.setTextColor(SSD1306_WHITE);
+        }
+        
+        display.setCursor(2, y + 1);
+        
+        // Display setting with current value
+        switch (idx) {
+            case 0: // Scan interval
+                display.printf("Scan:%lus", scanInterval / 1000);
+                break;
+            case 1: // Distance unit
+                display.printf("Unit:%s", useMetric ? "m" : "ft");
+                break;
+            case 2: // Auto scan
+                display.printf("Auto:%s", autoScan ? "ON" : "OFF");
+                break;
+            case 3: // Promiscuous
+                display.printf("Prom:%s", promiscuous ? "ON" : "OFF");
+                break;
+            case 4: // Back
+                display.print("Back");
+                break;
+        }
+    }
+    
+    display.display();
+}
+
+// ============ UTILITY DISPLAYS ============
 void display_message(const char* message) {
     display.clearDisplay();
-    display.setTextSize(0.5);
+    display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 28);
     display.println(message);
@@ -218,7 +482,7 @@ void display_message(const char* message) {
 
 void display_connecting(const char* deviceName) {
     display.clearDisplay();
-    display.setTextSize(0.5);
+    display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
     display.setCursor(0, 20);
     display.println("Connecting to:");

@@ -91,7 +91,10 @@ std::vector<Device> bt_scan() {
         d.mac = dev.getAddress().toString().c_str();
         d.name = dev.haveName() ? dev.getName().c_str() : identifyDeviceType(dev);
         d.rssi = dev.getRSSI();
-        d.distance = estimateDistance(d.rssi);
+        
+        // Enhanced distance estimation for BLE
+        d.distance = estimateDistanceBLE_Enhanced(d.rssi);
+        
         d.type = TYPE_BLUETOOTH;
         d.channel = 0; // BLE uses adaptive frequency hopping
         
@@ -99,8 +102,8 @@ std::vector<Device> bt_scan() {
         
         // Log interesting devices
         if (isAudioDevice(dev)) {
-            Serial.printf("[BT] Audio device found: %s (%s)\n", 
-                         d.name.c_str(), d.mac.c_str());
+            Serial.printf("[BT] Audio device found: %s (%s) | %.2fm\n", 
+                         d.name.c_str(), d.mac.c_str(), d.distance);
         }
     }
     
