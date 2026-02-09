@@ -26,7 +26,6 @@ Button btnUp    = {BTN_UP,    HIGH, 0, 50};
 Button btnDown  = {BTN_DOWN,  HIGH, 0, 50};
 Button btnLeft  = {BTN_LEFT,  HIGH, 0, 50};
 Button btnRight = {BTN_RIGHT, HIGH, 0, 50};
-
 // ============ BUTTON INITIALIZATION ============
 void buttons_init() {
     // Initialize buttons with pull-up resistors
