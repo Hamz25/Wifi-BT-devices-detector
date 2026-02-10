@@ -8,9 +8,9 @@
 #include "tracking/tracking.h"
 
 // ESP32-S3 Specific Pins
-#define SDA_PIN 11
-#define SCK_PIN 12
-#define LED_PIN 48
+#define SDA_PIN 11  // GPIO11 - I2C Data
+#define SCL_PIN 12  // GPIO12 - I2C Clock
+#define LED_PIN 48  // GPIO48 - RGB LED
 
 Adafruit_NeoPixel LED_RGB(1, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -50,7 +50,7 @@ unsigned long lastScan = 0;
 unsigned long SCAN_INTERVAL = 3000; // Adjustable scan interval (3 seconds default)
 int selectedDevice = 0;
 int deviceListScroll = 0;
-bool autoScan = true;
+bool autoScan = false;
 bool promiscuousMode = false;
 
 // Packet sniffing variables
@@ -89,7 +89,7 @@ void setup() {
     LED_RGB.show();
     
     // Initialize I2C
-    Wire.begin(SDA_PIN, SCK_PIN);
+    Wire.begin(SDA_PIN, SCL_PIN);
     
     // Initialize Display
     Serial.println("Initializing Display...");
@@ -123,7 +123,7 @@ void loop() {
     
     // Perform periodic scans (if auto-scan enabled and not in packet sniff mode)
     if (autoScan && currentMode != MODE_PACKET_SNIFF && (currentTime - lastScan >= SCAN_INTERVAL)) {
-        lastScan = currentTime;
+        
         
         // LED: Scanning
         LED_RGB.setPixelColor(0, LED_RGB.Color(0, 0, 255)); // Blue = Scanning
@@ -151,6 +151,7 @@ void loop() {
         // LED: Ready
         LED_RGB.setPixelColor(0, LED_RGB.Color(0, 255, 0)); // Green = Ready
         LED_RGB.show();
+        lastScan = currentTime;
     }
     
     // Manual scans for specific modes

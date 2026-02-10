@@ -1,11 +1,12 @@
 #pragma once
 #include <Arduino.h>
 
-// Button pin definitions (adjust these to your actual button pins)
-#define BTN_UP    1
-#define BTN_DOWN  2
-#define BTN_LEFT  42
-#define BTN_RIGHT 41    
+// Button pin definitions - SAFE pins for ESP32-S3 (won't cause shutdown)
+// These pins are safe for general GPIO use and won't interfere with boot
+#define BTN_UP    14  // GPIO14 - Safe
+#define BTN_DOWN  15  // GPIO15 - Safe  
+#define BTN_LEFT  16  // GPIO16 - Safe
+#define BTN_RIGHT 17  // GPIO17 - Safe
 
 // Menu mode enumeration (shared with main.cpp)
 enum MenuMode {

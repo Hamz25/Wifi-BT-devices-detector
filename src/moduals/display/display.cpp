@@ -14,8 +14,10 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 #define RADAR_CENTER_Y 32
 #define RADAR_MAX_RADIUS 30
 #define MAX_DISPLAY_DISTANCE 20.0f  // meters
-#define SCK_PIN 12
-#define SDA_PIN 11
+
+// I2C pins for ESP32-S3
+#define SDA_PIN 11  // GPIO11 - I2C Data for ESP32-S3
+#define SCL_PIN 12  // GPIO12 - I2C Clock for ESP32-S3
 
 // Display constants for 0.96" screen
 #define MAX_VISIBLE_LINES 5
@@ -26,8 +28,8 @@ Adafruit_SSD1306 display(128, 64, &Wire, -1);
 static int radarAngle = 0;
 
 void display_init() {
-    // Force Pins for ESP32-S3
-    Wire.begin(SCK_PIN, SDA_PIN); 
+    // Force I2C Pins for ESP32-S3 (SDA=GPIO11, SCL=GPIO12)
+    Wire.begin(SDA_PIN, SCL_PIN); 
 
     // Start Hardware at address 0x3C
     if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
