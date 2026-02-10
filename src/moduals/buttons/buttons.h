@@ -2,10 +2,10 @@
 #include <Arduino.h>
 
 // Button pin definitions (adjust these to your actual button pins)
-#define BTN_UP    14
-#define BTN_DOWN  15
-#define BTN_LEFT  16
-#define BTN_RIGHT 17
+#define BTN_UP    1
+#define BTN_DOWN  2
+#define BTN_LEFT  42
+#define BTN_RIGHT 41    
 
 // Menu mode enumeration (shared with main.cpp)
 enum MenuMode {

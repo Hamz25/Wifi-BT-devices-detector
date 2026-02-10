@@ -21,20 +21,22 @@ extern void wifi_set_channel(uint8_t channel);
 extern void wifi_enable_promiscuous();
 extern void wifi_disable_promiscuous();
 
-// Button instances - properly initialized
-Button btnUp    = {BTN_UP,    HIGH, 0, 50};
-Button btnDown  = {BTN_DOWN,  HIGH, 0, 50};
-Button btnLeft  = {BTN_LEFT,  HIGH, 0, 50};
-Button btnRight = {BTN_RIGHT, HIGH, 0, 50};
+// Button instances - properly initialized (active HIGH)
+Button btnUp    = {BTN_UP,    LOW, 0, 50};
+Button btnDown  = {BTN_DOWN,  LOW, 0, 50};
+Button btnLeft  = {BTN_LEFT,  LOW, 0, 50};
+Button btnRight = {BTN_RIGHT, LOW, 0, 50};
 // ============ BUTTON INITIALIZATION ============
 void buttons_init() {
-    // Initialize buttons with pull-up resistors
-    pinMode(BTN_UP, INPUT_PULLUP);
-    pinMode(BTN_DOWN, INPUT_PULLUP);
-    pinMode(BTN_LEFT, INPUT_PULLUP);
-    pinMode(BTN_RIGHT, INPUT_PULLUP);
+    // Initialize buttons with INTERNAL pull-down resistors (no external resistors needed!)
+    // ESP32-S3 has built-in ~45kΩ pull-down resistors
+    pinMode(BTN_UP, INPUT_PULLDOWN);
+    pinMode(BTN_DOWN, INPUT_PULLDOWN);
+    pinMode(BTN_LEFT, INPUT_PULLDOWN);
+    pinMode(BTN_RIGHT, INPUT_PULLDOWN);
     
-    Serial.println("Buttons initialized");
+    Serial.println("Buttons initialized (active HIGH with INTERNAL pull-down resistors)");
+    Serial.println("NO external resistors needed!");
     Serial.println("Button Controls:");
     Serial.println("  UP/DOWN: Navigate");
     Serial.println("  RIGHT: Select/Enter");
@@ -51,7 +53,8 @@ bool readButton(Button &btn) {
     }
     
     if ((millis() - btn.lastDebounceTime) > btn.debounceDelay) {
-        if (reading == LOW && btn.lastState == HIGH) {
+        // Button is active HIGH (pressed when reading is HIGH)
+        if (reading == HIGH && btn.lastState == LOW) {
             pressed = true;
         }
     }
